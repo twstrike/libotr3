@@ -1,0 +1,50 @@
+language: c
+
+matrix:
+  fast_finish: true
+  allow_failures:
+    - dist: precise
+  include:
+    - os: linux
+      dist: trusty
+      compiler: clang
+    - os: linux
+      dist: trusty
+      compiler: gcc
+    - os: linux
+      dist: precise
+      compiler: clang
+    - os: linux
+      dist: precise
+      compiler: gcc
+
+sudo: required
+
+before_install:
+  - sudo apt-get update --quiet --assume-yes
+  - sudo apt-get install valgrind --quiet --assume-yes
+
+before_script:
+  - mkdir .deps
+  - curl https://www.gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-1.26.tar.bz2 | tar xjf - -C .deps
+  - pushd .deps/libgpg-error-1.26 && ./configure && make && sudo make install && popd
+  - curl https://www.gnupg.org/ftp/gcrypt/libgcrypt/libgcrypt-1.7.6.tar.bz2 | tar xjf - -C .deps
+  - pushd .deps/libgcrypt-1.7.6 && ./configure && make && sudo make install && popd
+
+script:
+  - export LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
+  - export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:${PKG_CONFIG_PATH}"
+  - ./bootstrap && ./configure && make
+  - cd tests && ./run.sh test_list
+  - valgrind --track-origins=yes --leak-check=full ./unit/test_auth
+  - valgrind --track-origins=yes --leak-check=full ./unit/test_proto
+  - valgrind --track-origins=yes --leak-check=full ./unit/test_dh
+  - valgrind --track-origins=yes --leak-check=full ./unit/test_b64
+  - valgrind --track-origins=yes --leak-check=full ./unit/test_context
+  - valgrind --track-origins=yes --leak-check=full ./unit/test_userstate
+  - valgrind --track-origins=yes --leak-check=full ./unit/test_tlv
+  - valgrind --track-origins=yes --leak-check=full ./unit/test_mem
+  - valgrind --track-origins=yes --leak-check=full ./unit/test_sm
+  - valgrind --track-origins=yes --leak-check=full ./unit/test_instag
+  - valgrind --track-origins=yes --leak-check=full ./unit/test_privkey
+
